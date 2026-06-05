@@ -1,0 +1,90 @@
+# Geospatial Data Analysis
+
+import pandas as pd
+import folium
+from math import radians, sin, cos, sqrt, atan2
+
+# Load Dataset
+df = pd.read_csv("geospatial_data.csv")
+
+# Display Dataset Information
+print("Dataset Shape:", df.shape)
+print("\nFirst 5 Records:")
+print(df.head())
+
+# Data Cleaning
+df.drop_duplicates(inplace=True)
+df.dropna(subset=["Latitude", "Longitude"], inplace=True)
+
+# Validate Coordinates
+df = df[
+    (df["Latitude"] >= -90) &
+    (df["Latitude"] <= 90) &
+    (df["Longitude"] >= -180) &
+    (df["Longitude"] <= 180)
+]
+
+print("\nCleaned Dataset Shape:", df.shape)
+
+# Calculate Distance Using Haversine Formula
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth radius in kilometers
+
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+
+    a = (
+        sin(dlat / 2) ** 2
+        + cos(radians(lat1))
+        * cos(radians(lat2))
+        * sin(dlon / 2) ** 2
+    )
+
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
+
+# Example Distance Calculation
+if len(df) >= 2:
+    distance = haversine(
+        df.iloc[0]["Latitude"],
+        df.iloc[0]["Longitude"],
+        df.iloc[1]["Latitude"],
+        df.iloc[1]["Longitude"]
+    )
+
+    print(f"\nDistance between first two locations: {distance:.2f} km")
+
+# Create Interactive Map
+center_lat = df["Latitude"].mean()
+center_lon = df["Longitude"].mean()
+
+map_obj = folium.Map(
+    location=[center_lat, center_lon],
+    zoom_start=5
+)
+
+# Add Markers
+for _, row in df.iterrows():
+    folium.Marker(
+        location=[row["Latitude"], row["Longitude"]],
+        popup=f"{row['Location_Name']}",
+        tooltip=row["Location_Name"]
+    ).add_to(map_obj)
+
+# Save Map
+map_obj.save("geospatial_map.html")
+
+print("\nInteractive map saved as geospatial_map.html")
+
+# Regional Analysis
+if "Region" in df.columns:
+    region_count = df["Region"].value_counts()
+
+    print("\nLocations by Region:")
+    print(region_count)
+
+# Summary Statistics
+print("\n===== GEOSPATIAL ANALYSIS SUMMARY =====")
+print("Total Locations:", len(df))
+print("Average Latitude:", round(df["Latitude"].mean(), 4))
+print("Average Longitude:", round(df["Longitude"].mean(), 4))
